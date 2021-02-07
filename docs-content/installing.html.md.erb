@@ -1,46 +1,78 @@
 ---
-title: Installing and Configuring the MongoDB Enterprise Service for Pivotal Cloud Foundry 
+title: Installing and Configuring the MongoDB Enterprise Service for VMware Tanzu 
 owner: Partners
 ---
 
-This topic describes how to install and configure the MongoDB Enterprise Service for Pivotal Cloud Foundry (PCF) tile.
+This topic describes how to install and configure the MongoDB Enterprise Service for VMware Tanzu tile.
 
-##<a id='install'></a> Install and Configure the MongoDB Enterprise Service for PCF Tile
+##<a id='install'></a> Install and Configure the MongoDB Enterprise Service for VMware Tanzu Tile
 
 1. Download the product file from [Pivotal Network](http://network.pivotal.io).
 
 1. Navigate to the Ops Manager Installation Dashboard and click **Import a Product** to upload the product file. 
 
-1. Click **Add** next to the uploaded MongoDB Enterprise Service for PCF tile in the Ops Manager **Available Products** view to add it to your staging area.
+1. Click **Add** next to the uploaded MongoDB Enterprise Service for VMware Tanzu tile in the Ops Manager **Available Products** view to add it to your staging area.
 
-1. Click the newly added **MongoDB Enterprise Service for PCF** tile.
+1. Click the newly added **MongoDB Enterprise Service for VMware Tanzu** tile.
 
 1. Click **MongoDB On-Demand**.
-	![Ops Man Config](images/config.png)
+	![Ops Man Config](images/config-v1.0.2.png)
 
 1. For **MongoDB Ops Manager URL**, enter the URL of your MongoDB Ops Manager web interface.
 
-1. For **MongoDB Operations Manager username**, enter the MongoDB Ops Manager username that PCF will use to create MongoDB instances. The user must have sufficient permissions to create a cluster.
+1. For **MongoDB Ops Manager username**, enter the MongoDB Ops Manager username that VMware Tanzu will use to create MongoDB instances. The user must have sufficient permissions to create a cluster.
 
 1. For **MongoDB Ops Manager API key**, enter the key associated with your MongoDB account.
+
+1. (Optional) Enable backups through MongoDB Ops Manager by selecting the **Backups enabled by default** checkbox.
+
+1. Add one or more **Tags** to automatically apply to each cluster deployed through VMware Tanzu. These tag are accessable in MongoDB Ops Manager. They can be used to help distunguish VMware Tanzu-based deployments from  other deployments in MongoDB Ops Manager.
 
 1. For **MongoDB availability zone(s)**, select the checkboxes that correspond to the availability zones where you want to deploy MongoDB. The availability zones must have an associated service network.
 
 1. Click **Save**.  
 
-1. Return to the Ops Manager Installation Dashboard and click **Apply Changes** to install the MongoDB Enterprise Service for PCF tile.
+1. For each of the **Service Plan** sections, configure the **Small**, **Medium**, and **Large** **VM Type**s and **disk type**s.
+	![Service Plans Config](images/service-plans-rs-v1.0.2.png)
 
-1. After the installation finishes, see the [Creating and Binding MongoDB Service Instances](binding.html) topic for more information about to create and bind MongoDB service instances.
+1. Click **Save** for each.
+
+1. (Optional) Configure Syslog
+You can configure syslog to send VM logs to syslog server using syslog forwarder.
+Enter address of syslog server, port and protocol
+Optionally provide TLS certificate
+
+1. (Optional) Configure the **Security** settings.
+You can configure TSL/SSL settings for your MongoDB deployments.
+By default, all deployments have MongoDB authetication enabled. These settings are only required to support TSL/SSL communication between 
+applications and MongoDB databases. 
+  * Enter a server certificate and private key PEM file. The server certificate will be placed on each MongoDB virtual machine at `/var/vcap/jobs/mongod_node/config/server.pem`.
+  * Enter the Certificate Authority (CA) server certificate. This will be placed in `/var/vcap/jobs/mongod_node/config/cacert.pem`.
+  <p class='note'><strong>Note:</strong> These settings only configure the placement of the certificates on the provisioned machines running MongoDB. In order to actually enable SSL communication, you must complete the configuration in the corresponding <strong>Project Security</strong> settings in MongoDB Ops Manager. For more information, see <a href="https://docs.opsmanager.mongodb.com/current/tutorial/enable-ssl-for-a-deployment/">Enabling SSL for a Deplopyment</a>.</p>
+	![SSL Config](images/ssl_config.png)
+
+1. (Optional) Configure the **Errands**, **Resource Config**, and **Stemcell** sections.
+
+1. (Optional) Resource Config 
+  Choose MongoDB tile vm size
+  Make sure that internet connectivity is checked
+
+1. Return to the Ops Manager Installation Dashboard and click **Apply Changes** to install the MongoDB Enterprise Service for VMware Tanzu tile and wait for the installation to complete.
+
+1. Log in to MongoDB Ops Manager and add the VMware Tanzu Ops Manager IP address to the API whitelist. For more information, see [MongoDB Ops Manager Documentation](https://docs.opsmanager.mongodb.com/current/tutorial/configure-public-api-access/).
+
+1. After the installation finishes, see [Creating and Binding MongoDB Service Instances](binding.html) for how to create and bind MongoDB service instances.
+
 
 ## <a id="troubleshoot"></a> Troubleshooting
 
-This section describes how to troubleshoot known issues when installing the MongoDB Enterprise Service for PCF tile.
+This section describes how to troubleshoot known issues when installing the MongoDB Enterprise Service for VMware Tanzu tile.
 
-###Symptom###
+### Symptom
 
-MongoDB Ops Manager is not found.
+cf create-service fails with immediate error that contains: "Service broker error: could not create new group "
 
-### Explanation###
+### Explanation
 
 The problem may be produced by one of the following causes:
 
@@ -48,10 +80,54 @@ The problem may be produced by one of the following causes:
 * MongoDB Ops Manager API is not enabled.
 * MongoDB Ops Manager API key is invalid.
 
-### Solution ###
+### Solution
 
-Perform the following solutions to fix the problem:
+1. Ensure that MongoDB Ops Manager is running and reachable across the network.
+  * Check that the MongoDB Ops Manager url is accesable from the MongoDB Tile vm.
 
-* Ensure that MongoDB Ops Manager is running and reachable across the network.
-* Navigate to **Group Settings** in MongoDB Ops Manager and ensure that **Public API** is enabled.
-* Ensure that the MongoDB Ops Manager API key you provided when configuring the tile is valid. If not, navigate to **Group Settings** in MongoDB Ops Manager and generate a new one.
+
+1. Navigate to **Group Settings** in MongoDB Ops Manager and ensure that you have **Public API** enabled.
+
+1. Ensure that the MongoDB Ops Manager API key you provided when configuring the tile is valid. If not, navigate to **Group Settings** in MongoDB Ops Manager and generate a new one.
+
+
+### Symptom
+
+cf create-service fails to deploy. cf service instance has status "create failed"
+
+### Explanation
+
+
+There could be a variety of reasons why service instance fails to deploy. A deep dive is required to root cause an issue.
+
+### Solution
+
+Here are common steps that will help to find an actual issue.
+
+1. Run command cf server <service instance name>  and get dashboard url
+1. Use dashboard url to connect to Ops Manager and inspect MongoDB cluster. 
+  * Check that all requires servers has been created and are active. If a cluster has no servers registered, then move to step 4.
+  * Check that MongoDB Agents are connected and report no errors. In most cases MongoDB Agent logs help to identify root cause of an issue. If MongoDB Agents did not connect, then move to Step 4
+  * If cluster is properly configured but cannot reach its "Goal State", please inspect BOSH logs for VM level errors
+1. In case when MongoDB Ops Manager does not register and servers in a cluster a VM level Logs must be inspected
+1. Collect BOSH logs with bosh logs command from Mongo or get them from log collection pipeline, when configured.
+  * Logs from MongoDB tile VM to find out early stage errors
+  * Logs from Server Instances can pin point environmental type errors.
+
+
+
+### Symptom
+
+Following Error appears in Tile logs
+ERROR: Configuration was not applied! 
+
+### Explanation
+
+
+When cluster configuration has been modified outside of Tile configuration, it may lead to issues with Tile Upgrade. Some configurations performed manually cannot be reverted back or not supported by VMware Tanzu Tile.
+In this case Ops Manager cluster configuration will take priority as it will guarantee no downtime of a deployment.
+
+
+### Solution
+
+We expect to improve error handling in our following releases to make it clear when configuration is desynchronized.
